@@ -19,12 +19,20 @@ Pip install
 ```
 streamlit
 pandas
-base58
+base64
 subprocess
 os
 pickle
 
 ```
+### Explaning the use of these libraries
+streamlit - we are making use of streamlit as the web framework
+pandas - we are using pandas in order to display the data frame
+base64 - will be used for encoding, decoding the file, when we will make the file available for downloading the prediction results
+subprocess - the descriptor calculation will be made possibile using the subprocess library
+os - we are using the 'os' library in order to perform file handeling
+pickle - will be used for loading up the picked file of the model
+
 
 ### Generating the PKL file
 
