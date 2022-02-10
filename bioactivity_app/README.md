@@ -1,4 +1,5 @@
 Python library called Streamlit will allow us to develop a simple data-driven application for this project
+
 Streamlit is an open-source Python library that makes it easy to create and share beautiful, custom web apps for machine learning and data science.
 
 ### Create conda environment
