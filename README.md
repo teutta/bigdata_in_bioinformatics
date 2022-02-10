@@ -2,7 +2,7 @@ Bioinformatcis is a field that applies statics and information theory to make se
 
 In this project we used ChEMBL database to download and preprocess the biological activity data. 
 
-# The bionformatics has the following features:
+# The bioinformatics has the following features
 ```
 • Data Collection and Pre-Processing
 
