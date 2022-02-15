@@ -18,9 +18,9 @@ In this project we used ChEMBL database to download and preprocess the biologica
 # Dependecies
 
 ```
-• Python 3.x
-
 • Jupyter notebook
+
+• Python 3.x
 
 • Anaconda
 
