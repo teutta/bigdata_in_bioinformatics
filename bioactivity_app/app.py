@@ -8,69 +8,97 @@ import pickle
 # Molecular descriptor calculator
 def desc_calc():
     # Performs the descriptor calculation
-   # bashCommand = "java -Xms2G -Xmx2G -Djava.awt.headless=true -jar ./PaDEL-Descriptor/PaDEL-Descriptor.jar -removesalt -standardizenitro -fingerprints -descriptortypes ./PaDEL-Descriptor/PubchemFingerprinter.xml -dir ./ -file descriptors_output.csv"
-    process = subprocess.Popen(bashCommand.split(), stdout=subprocess.PIPE)
-    output, error = process.communicate()
+    # Read in calculated descriptors and display the dataframe
+    st.subheader('Calculated molecular descriptors')
+    desc = pd.read_csv('descriptors_output.csv')
+    st.write(desc)
+    st.markdown(filedownload(desc), unsafe_allow_html=True)
+    # Write the data dimension (number of molecules and descriptors)
+    nmol = desc.shape[0]
+    ndesc = desc.shape[1]
+    st.info('Selected fingerprint: ' + user_fp)
+    st.info('Number of molecules: ' + str(nmol))
+    st.info('Number of descriptors: ' + str(ndesc-1))
     os.remove('molecule.smi')
-
+    
 # File download
 def filedownload(df):
     csv = df.to_csv(index=False)
     b64 = base64.b64encode(csv.encode()).decode()  # strings <-> bytes conversions
-    href = f'<a href="data:file/csv;base64,{b64}" download="prediction.csv">Download Predictions</a>'
+    href = f'<a href="data:file/csv;base64,{b64}" download="descriptor_{user_fp}.csv">Download CSV File</a>'
     return href
-
-# Model building
-def build_model(input_data):
-    # Reads in saved regression model
-    load_model = pickle.load(open('acetylcholinesterase_model.pkl', 'rb'))
-    # Apply model to make predictions
-    prediction = load_model.predict(input_data)
-    st.header('**Prediction output**')
-    prediction_output = pd.Series(prediction, name='pIC50')
-    molecule_name = pd.Series(load_data[1], name='molecule_name')
-    df = pd.concat([molecule_name, prediction_output], axis=1)
-    st.write(df)
-    st.markdown(filedownload(df), unsafe_allow_html=True)
-
-# Logo image
-#image = Image.open('logo.png')
-
-#st.image(image, use_column_width=True)
 
 # Page title
 st.markdown("""
-# Bioactivity Prediction App """)
+## BIOINFROMATICS PREDICTION 
+""")
 
 # Sidebar
 with st.sidebar.header('1. Upload your CSV data'):
-    uploaded_file = st.sidebar.file_uploader("Upload your input file", type=['csv'])
+    uploaded_file = st.sidebar.file_uploader("Upload your input CSV file", type=["csv"])
 
 
-if st.sidebar.button('Predict'):
-    load_data = pd.read_table(uploaded_file, sep=' ', header=None)
-    load_data.to_csv('molecule.smi', sep = '\t', header = False, index = False)
+with st.sidebar.header('2. Enter column names '):
+    name_mol = st.sidebar.text_input('Enter column name for Molecule ID', 'molecule_chembl_id')
+    name_smiles = st.sidebar.text_input('Enter column name for SMILES', 'canonical_smiles')
 
-    st.header('**Original input data**')
-    st.write(load_data)
-    
+
+with st.sidebar.header('3. Set parameters'):
+    # Select fingerprint
+    fp_dict = {'AtomPairs2D':'AtomPairs2DFingerprinter.xml',
+               'AtomPairs2DCount':'AtomPairs2DFingerprintCount.xml',
+               'CDK':'Fingerprinter.xml',
+               'CDKextended':'ExtendedFingerprinter.xml',
+               'CDKgraphonly':'GraphOnlyFingerprinter.xml',
+               'EState':'EStateFingerprinter.xml',
+               'KlekotaRoth':'KlekotaRothFingerprinter.xml',
+               'KlekotaRothCount':'KlekotaRothFingerprintCount.xml',
+               'MACCS':'MACCSFingerprinter.xml',
+               'PubChem':'PubchemFingerprinter.xml',
+               'Substructure':'SubstructureFingerprinter.xml',
+               'SubstructureCount':'SubstructureFingerprintCount.xml'}
+    user_fp = st.sidebar.selectbox('Choose fingerprint to calculate', list(fp_dict.keys()) )
+    selected_fp = fp_dict[user_fp]
+
+    # Set number of molecules to compute
+    df0 = pd.read_csv('acetylcholinesterase_04_bioactivity_data_3class_pIC50.csv')
+    all_mol = df0.shape[0]
+    number2calc = st.sidebar.slider('How many molecules to compute?', min_value=10, max_value=all_mol, value=10, step=10)
+
+
+if uploaded_file is not None:
+    # Read CSV data
+    @st.cache
+    def load_csv():
+        csv = pd.read_csv(uploaded_file).iloc[:number2calc,1:]
+        return csv
+    df = load_csv()
+    df2 = pd.concat([df[name_smiles], df[name_mol]], axis=1)
+    # Write CSV data
+    df2.to_csv('molecule.smi', sep = '\t', header = False, index = False)
+    st.subheader('Initial data from CSV file')
+    st.write(df)
+    st.subheader('Formatted as PADEL input file')
+    st.write(df2)
     with st.spinner("Calculating descriptors..."):
         desc_calc()
-
-    # Read in calculated descriptors and display the dataframe
-    st.header('**Calculated molecular descriptors**')
-    desc = pd.read_csv('descriptors_output.csv')
-    st.write(desc)
-    st.write(desc.shape)
-
-    # Read descriptor list used in previously built model
-    st.header('**Subset of descriptors from previously built models**')
-    Xlist = list(pd.read_csv('descriptor_list.csv').columns)
-    desc_subset = desc[Xlist]
-    st.write(desc_subset)
-    st.write(desc_subset.shape)
-
-    # Apply trained model to make prediction on query compounds
-    build_model(desc_subset)
+        
 else:
-    st.info('Upload input data in the sidebar to start!')
+    st.info('Awaiting for CSV file to be uploaded.')
+    if st.button('Press to use Example Dataset'):
+        # Read CSV data
+        @st.cache
+        def load_data():
+            # number2calc specifies the number of molecules to compute
+            df = pd.read_csv('acetylcholinesterase_04_bioactivity_data_3class_pIC50.csv').iloc[:number2calc,1:]
+            return df
+        df = load_data()
+        df2 = pd.concat([df[name_smiles], df[name_mol]], axis=1)
+        # Write CSV data
+        df2.to_csv('molecule.smi', sep = '\t', header = False, index = False)
+        st.subheader('Initial data from CSV file')
+        st.write(df)
+        st.subheader('Formatted as PADEL input file')
+        st.write(df2)
+        with st.spinner("Calculating descriptors..."):
+            desc_calc()
